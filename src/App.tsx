@@ -12,8 +12,8 @@ import { DeviceEditor } from './pages/Devices/DeviceEditor';
 import { MediaLibrary } from './pages/Media/MediaLibrary';
 import { PlaylistsList } from './pages/Playlists/PlaylistsList';
 import { PlaylistForm } from './pages/Playlists/PlaylistForm';
-import { ScheduleList } from './pages/Schedules/ScheduleList';
-import { ScheduleForm } from './pages/Schedules/ScheduleForm';
+import { ScheduleList } from './pages/Schedule/ScheduleList';
+import { ScheduleForm } from './pages/Schedule/ScheduleForm';
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (

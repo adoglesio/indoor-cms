@@ -1,12 +1,11 @@
+// src/pages/Schedules/ScheduleList.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { Calendar, Filter, X, Edit, Repeat, Trash2, Clock } from 'lucide-react';
-import { format, startOfWeek, addDays, isSameDay } from 'date-fns/esm'; // ← versão ES Modules
+import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
 
-const { format, startOfWeek, addDays, isSameDay } = require('date-fns');
-const ptBR = require('date-fns/locale/pt-BR');
 
 interface Schedule {
   id: string;
@@ -87,7 +86,7 @@ export function ScheduleList() {
         </Link>
       </div>
 
-      {/* Filtros e barra de navegação */}
+      {/* Filtros */}
       <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-lg shadow">
         <div className="flex-1 min-w-[150px]">
           <select className="w-full border p-2 rounded">
@@ -102,7 +101,7 @@ export function ScheduleList() {
         </button>
       </div>
 
-      {/* Calendário semanal */}
+      {/* Calendário */}
       <div className="bg-white p-4 rounded-lg shadow">
         <div className="flex justify-between items-center mb-4">
           <h2 className="font-semibold">
@@ -153,7 +152,7 @@ export function ScheduleList() {
         <span><span className="inline-block w-3 h-3 bg-green-500 rounded-full mr-1"></span> TESTE VERTICAL</span>
       </div>
 
-      {/* Lista de agendamentos */}
+      {/* Lista */}
       {loading ? (
         <div className="text-center py-8">Carregando...</div>
       ) : schedules.length === 0 ? (

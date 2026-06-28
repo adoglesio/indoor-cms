@@ -1,4 +1,4 @@
-// src/pages/Playlists/PlaylistForm.tsx
+// cms/src/pages/Playlists/PlaylistForm.tsx
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
@@ -23,11 +23,12 @@ export function PlaylistForm() {
   const [description, setDescription] = useState('');
   const [orientation, setOrientation] = useState('horizontal');
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [type, setType] = useState<'media' | 'youtube'>('media');
+  const [type, setType] = useState<'media' | 'youtube' | 'link'>('media');
   const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
   const [selectedMediaIds, setSelectedMediaIds] = useState<string[]>([]);
 
-  // Carregar dados para edição
+  // Carregar playlists existentes (edição)
   useEffect(() => {
     if (id) {
       fetchPlaylist();
@@ -52,14 +53,15 @@ export function PlaylistForm() {
       setAudioEnabled(data.audio_enabled || false);
       setType(data.type || 'media');
       setYoutubeUrl(data.youtube_url || '');
-      // Carregar itens da playlist - CORRIGIDO: usa media_asset_id
+      setLinkUrl(data.link_url || '');
+      // Carregar itens da playlist
       const { data: items } = await supabase
         .from('playlist_items')
-        .select('media_asset_id')   // ← CORREÇÃO AQUI
+        .select('media_asset_id')
         .eq('playlist_id', id)
         .order('position');
       if (items) {
-        setSelectedMediaIds(items.map((item) => item.media_asset_id));
+        setSelectedMediaIds(items.map(item => item.media_asset_id));
       }
     }
   }
@@ -76,14 +78,15 @@ export function PlaylistForm() {
     setMediaList(data || []);
   }
 
-  const filteredMedia = mediaList.filter((m) =>
+  // Filtrar mídias pela busca
+  const filteredMedia = mediaList.filter(m =>
     m.file_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const toggleMediaSelection = (mediaId: string) => {
-    setSelectedMediaIds((prev) =>
+    setSelectedMediaIds(prev =>
       prev.includes(mediaId)
-        ? prev.filter((id) => id !== mediaId)
+        ? prev.filter(id => id !== mediaId)
         : [...prev, mediaId]
     );
   };
@@ -96,10 +99,17 @@ export function PlaylistForm() {
       alert('Nome é obrigatório');
       return;
     }
+
     if (type === 'youtube' && !youtubeUrl.trim()) {
       alert('URL do YouTube é obrigatória');
       return;
     }
+
+    if (type === 'link' && !linkUrl.trim()) {
+      alert('URL do site é obrigatória');
+      return;
+    }
+
     if (type === 'media' && selectedMediaIds.length === 0) {
       alert('Selecione pelo menos uma mídia');
       return;
@@ -114,6 +124,8 @@ export function PlaylistForm() {
         audio_enabled: audioEnabled,
         type,
         youtube_url: type === 'youtube' ? youtubeUrl.trim() : null,
+        link_url: type === 'link' ? linkUrl.trim() : null,
+        is_active: true,
         updated_at: new Date().toISOString(),
         owner_id: user?.id || null,
       };
@@ -122,22 +134,15 @@ export function PlaylistForm() {
 
       if (id) {
         // Editar
-        const { error } = await supabase
-          .from('playlists')
-          .update(payload)
-          .eq('id', id);
+        const { error } = await supabase.from('playlists').update(payload).eq('id', id);
         if (error) throw error;
       } else {
         // Criar
         const { data, error } = await supabase
           .from('playlists')
-          .insert({
-            ...payload,
-            created_at: new Date().toISOString(),
-          })
+          .insert({ ...payload, created_at: new Date().toISOString() })
           .select('id')
           .single();
-
         if (error) throw error;
         playlistId = data.id;
       }
@@ -149,13 +154,13 @@ export function PlaylistForm() {
           await supabase.from('playlist_items').delete().eq('playlist_id', id);
         }
 
-        // Inserir novos itens - CORRIGIDO: usa media_asset_id
+        // Inserir novos itens
         if (selectedMediaIds.length > 0) {
           const items = selectedMediaIds.map((mediaId, index) => ({
             playlist_id: playlistId,
-            media_asset_id: mediaId,   // ← CORREÇÃO AQUI
+            media_asset_id: mediaId,
             position: index + 1,
-            duration: 10,              // coluna duration existe
+            duration: 10,
           }));
           const { error: itemsError } = await supabase
             .from('playlist_items')
@@ -234,9 +239,7 @@ export function PlaylistForm() {
             checked={audioEnabled}
             onChange={(e) => setAudioEnabled(e.target.checked)}
           />
-          <label htmlFor="audioEnabled" className="font-medium">
-            Áudio ativado
-          </label>
+          <label htmlFor="audioEnabled" className="font-medium">Áudio ativado</label>
         </div>
 
         {/* Tipo de playlist */}
@@ -261,10 +264,19 @@ export function PlaylistForm() {
               />
               YouTube
             </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="radio"
+                value="link"
+                checked={type === 'link'}
+                onChange={() => setType('link')}
+              />
+              Site (Link)
+            </label>
           </div>
         </div>
 
-        {/* YouTube */}
+        {/* Condicional: YouTube */}
         {type === 'youtube' && (
           <div>
             <label className="block font-medium">URL do YouTube *</label>
@@ -282,7 +294,25 @@ export function PlaylistForm() {
           </div>
         )}
 
-        {/* Seleção de Mídias */}
+        {/* Condicional: Link */}
+        {type === 'link' && (
+          <div>
+            <label className="block font-medium">URL do Site *</label>
+            <input
+              type="url"
+              className="w-full border p-2 rounded"
+              placeholder="https://www.exemplo.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Insira o link completo do site que deseja exibir.
+            </p>
+          </div>
+        )}
+
+        {/* Condicional: Mídia */}
         {type === 'media' && (
           <div>
             <label className="block font-medium">Selecionar mídias</label>
@@ -295,16 +325,13 @@ export function PlaylistForm() {
             />
             <div className="border rounded p-2 max-h-60 overflow-y-auto">
               {filteredMedia.length === 0 ? (
-                <p className="text-gray-500 text-sm">
-                  Nenhuma mídia disponível. Faça upload primeiro.
-                </p>
+                <p className="text-gray-500 text-sm">Nenhuma mídia disponível. Faça upload primeiro.</p>
               ) : (
                 filteredMedia.map((media) => (
                   <label
                     key={media.id}
-                    className={`flex items-center gap-2 p-1 rounded hover:bg-gray-100 cursor-pointer ${
-                      selectedMediaIds.includes(media.id) ? 'bg-blue-50' : ''
-                    }`}
+                    className={`flex items-center gap-2 p-1 rounded hover:bg-gray-100 cursor-pointer ${selectedMediaIds.includes(media.id) ? 'bg-blue-50' : ''
+                      }`}
                   >
                     <input
                       type="checkbox"

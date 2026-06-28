@@ -8,12 +8,12 @@ import { User, Session } from '@supabase/supabase-js';
 // ============================================================
 interface AuthContextData {
   user: User | null;
-  session: Session | null;        // Adicionado para acesso à sessão, se necessário
+  session: Session | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshSession: () => Promise<void>; // Útil para forçar atualização
+  refreshSession: () => Promise<void>;
 }
 
 // ============================================================
@@ -33,14 +33,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // 3.1 Inicialização e listener de autenticação
   // ----------------------------------------------------------
   useEffect(() => {
-    // Busca sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
 
-    // Escuta mudanças de autenticação (login, logout, token refresh)
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -65,8 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password,
       });
       if (error) throw error;
-
-      // Força atualização da sessão (já feito pelo listener, mas garantia extra)
       if (data.session) {
         setSession(data.session);
         setUser(data.user);
@@ -80,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // -------- CADASTRO --------
+  // -------- CADASTRO (com verificação de e-mail duplicado) --------
   async function signUp(name: string, email: string, password: string) {
     try {
       setIsLoading(true);
@@ -91,17 +87,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           data: { full_name: name },
         },
       });
-      if (error) throw error;
+      if (error) {
+        // 🔥 Personaliza a mensagem para e-mail já cadastrado
+        if (error.message && error.message.toLowerCase().includes('user already registered')) {
+          throw new Error('Email já cadastrado.');
+        }
+        throw error;
+      }
 
       console.log('✅ Cadastro realizado com sucesso:', data);
 
-      // Se o e-mail for confirmado automaticamente (sem confirmação),
-      // a sessão já virá preenchida. Caso contrário, será null.
       if (data.session) {
         setSession(data.session);
         setUser(data.user);
       } else {
-        // Se a confirmação de e-mail estiver ativada, avise o usuário
         console.warn('⚠️ Confirme seu e-mail antes de fazer login.');
       }
     } catch (error) {
@@ -119,7 +118,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // Os estados são limpos pelo listener onAuthStateChange
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao sair';
       console.error('❌ Erro ao sair:', message);

@@ -1,11 +1,11 @@
-// cms/src/pages/Devices/DevicesList.tsx
+// src/pages/Devices/DevicesList.tsx
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { StatusBadge } from '../../components/StatusBadge';
 import { Device } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
-import { RefreshCw, Trash2, Edit, Link as LinkIcon, Power, CheckSquare, Square } from 'lucide-react';
+import { RefreshCw, Trash2, Edit, Link as LinkIcon, Power, CheckSquare, Square, User, LogOut } from 'lucide-react';
 
 export function DevicesList() {
   const { user, signOut } = useAuth();
@@ -40,9 +40,6 @@ export function DevicesList() {
     }
   }
 
-  // ============================================================
-  // DELETAR UMA TV
-  // ============================================================
   const handleDelete = async (id: string) => {
     if (!window.confirm('⚠️ Tem certeza que deseja excluir esta TV permanentemente?')) return;
     try {
@@ -56,21 +53,14 @@ export function DevicesList() {
     }
   };
 
-  // ============================================================
-  // DELETAR MÚLTIPLAS TVs
-  // ============================================================
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) {
       alert('Nenhuma TV selecionada.');
       return;
     }
     if (!window.confirm(`Tem certeza que deseja excluir ${selectedIds.length} TV(s) permanentemente?`)) return;
-
     try {
-      const { error } = await supabase
-        .from('devices')
-        .delete()
-        .in('id', selectedIds);
+      const { error } = await supabase.from('devices').delete().in('id', selectedIds);
       if (error) throw error;
       await fetchDevices();
       setSelectedIds([]);
@@ -81,9 +71,6 @@ export function DevicesList() {
     }
   };
 
-  // ============================================================
-  // DELETAR TODAS AS TVs DESPAREADAS
-  // ============================================================
   const handleDeleteUnpaired = async () => {
     const unpaired = devices.filter(d => !d.is_paired);
     if (unpaired.length === 0) {
@@ -91,7 +78,6 @@ export function DevicesList() {
       return;
     }
     if (!window.confirm(`Deseja excluir todas as ${unpaired.length} TV(s) despareadas?`)) return;
-
     try {
       const ids = unpaired.map(d => d.id);
       const { error } = await supabase.from('devices').delete().in('id', ids);
@@ -105,9 +91,6 @@ export function DevicesList() {
     }
   };
 
-  // ============================================================
-  // ATUALIZAR STATUS
-  // ============================================================
   const handleRefreshStatus = async (id: string) => {
     try {
       const { error } = await supabase
@@ -138,12 +121,14 @@ export function DevicesList() {
 
   const handleReboot = async (id: string) => {
     if (!window.confirm('Enviar comando de reinicialização para a TV?')) return;
-    alert('Comando de reinicialização enviado para a TV.');
+    try {
+      await supabase.from('devices').update({ restart_at: new Date().toISOString() }).eq('id', id);
+      alert('Comando enviado! A TV vai reiniciar a playlist.');
+    } catch (error: any) {
+      alert('Erro ao reiniciar: ' + error.message);
+    }
   };
 
-  // ============================================================
-  // FILTROS E PAGINAÇÃO
-  // ============================================================
   const filtered = devices.filter((d) => {
     const matchName = d.name?.toLowerCase().includes(search.toLowerCase()) ?? false;
     const matchStatus = statusFilter ? d.status === statusFilter : true;
@@ -155,7 +140,6 @@ export function DevicesList() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedDevices = filtered.slice(startIndex, startIndex + itemsPerPage);
 
-  // Selecionar/deselecionar todos
   const handleSelectAll = () => {
     if (selectAll) {
       setSelectedIds([]);
@@ -171,22 +155,21 @@ export function DevicesList() {
     );
   };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Gerenciar TVs</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user?.email}</span>
-          <button onClick={signOut} className="text-sm text-red-600 hover:underline">
-            Sair
+          <Link to="/profile" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <User size={16} /> Meu Perfil
+          </Link>
+          <button onClick={signOut} className="text-sm text-red-600 hover:underline flex items-center gap-1">
+            <LogOut size={16} /> Sair
           </button>
         </div>
       </div>
 
-      {/* Filtros e ações */}
       <div className="flex flex-wrap gap-4 items-center bg-white p-4 rounded-lg shadow">
         <div className="flex-1 min-w-[200px]">
           <input
@@ -208,21 +191,18 @@ export function DevicesList() {
             <option value="offline">Offline</option>
           </select>
         </div>
-
         <button
           className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
           onClick={() => { setSearch(''); setStatusFilter(''); }}
         >
           Limpar filtros
         </button>
-
         <button
           className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 flex items-center gap-2"
           onClick={handleDeleteUnpaired}
         >
           <Trash2 size={16} /> Limpar TVs não pareadas
         </button>
-
         {selectedIds.length > 0 && (
           <button
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 flex items-center gap-2"
@@ -231,7 +211,6 @@ export function DevicesList() {
             <Trash2 size={16} /> Deletar selecionadas ({selectedIds.length})
           </button>
         )}
-
         <Link
           to="/devices/new"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -240,7 +219,6 @@ export function DevicesList() {
         </Link>
       </div>
 
-      {/* Tabela */}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         {loading ? (
           <div className="text-center py-8">Carregando...</div>
@@ -311,7 +289,6 @@ export function DevicesList() {
         )}
       </div>
 
-      {/* Paginação */}
       {totalItems > 0 && (
         <div className="flex justify-between items-center text-sm text-gray-600">
           <span>Mostrando {startIndex + 1} - {Math.min(startIndex + itemsPerPage, totalItems)} de {totalItems} TVs</span>

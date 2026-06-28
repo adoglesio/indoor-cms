@@ -6,6 +6,7 @@ import { PrivateRoute } from './routes/PrivateRoute';
 import { Sidebar } from './components/Sidebar';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile/Profile';
 import Dashboard from './pages/Dashboard/Dashboard';
 import { DevicesList } from './pages/Devices/DevicesList';
 import { DeviceEditor } from './pages/Devices/DeviceEditor';
@@ -14,6 +15,7 @@ import { PlaylistsList } from './pages/Playlists/PlaylistsList';
 import { PlaylistForm } from './pages/Playlists/PlaylistForm';
 import { ScheduleList } from './pages/Schedule/ScheduleList';
 import { ScheduleForm } from './pages/Schedule/ScheduleForm';
+
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -32,6 +34,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><Layout><Profile /></Layout></PrivateRoute>} />
           <Route path="/dashboard" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
           <Route path="/devices" element={<PrivateRoute><Layout><DevicesList /></Layout></PrivateRoute>} />
           <Route path="/devices/new" element={<PrivateRoute><Layout><DeviceEditor /></Layout></PrivateRoute>} />

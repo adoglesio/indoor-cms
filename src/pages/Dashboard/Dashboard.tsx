@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatusBadge } from '../../components/StatusBadge';
-import { Tv, Monitor, List, Calendar, Plus, FileText } from 'lucide-react';
+import { Tv, Monitor, List, Calendar, Plus, FileText, User, LogOut } from 'lucide-react';
 
 interface Device {
   id: string;
@@ -18,13 +18,13 @@ interface Device {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [playlistsCount, setPlaylistsCount] = useState(0);
   const [schedulesCount, setSchedulesCount] = useState(0);
-  const [totalSlots] = useState(3); // número máximo de pontos (fixo ou vindo do plano)
+  const [totalSlots] = useState(3);
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'Usuário';
 
@@ -35,7 +35,6 @@ export default function Dashboard() {
   async function fetchDashboardData() {
     setLoading(true);
     try {
-      // Buscar TVs
       const { data: devicesData, error: devicesError } = await supabase
         .from('devices')
         .select('*')
@@ -43,18 +42,15 @@ export default function Dashboard() {
       if (devicesError) throw devicesError;
       setDevices(devicesData || []);
 
-      // Buscar playlists ativas
       const { count: playlistsCount, error: playlistsError } = await supabase
         .from('playlists')
         .select('*', { count: 'exact', head: true });
       if (!playlistsError) setPlaylistsCount(playlistsCount || 0);
 
-      // Buscar agendamentos (se a tabela existir)
       const { count: schedulesCount, error: schedulesError } = await supabase
         .from('schedules')
         .select('*', { count: 'exact', head: true });
       if (!schedulesError) setSchedulesCount(schedulesCount || 0);
-
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
     } finally {
@@ -62,29 +58,39 @@ export default function Dashboard() {
     }
   }
 
-  // Cálculos
   const totalDevices = devices.length;
   const onlineDevices = devices.filter(d => d.status === 'online').length;
   const offlineDevices = devices.filter(d => d.status === 'offline').length;
-  const usedSlots = devices.length; // cada TV ocupa um ponto
+  const usedSlots = devices.length;
   const availableSlots = Math.max(0, totalSlots - usedSlots);
 
   return (
     <div className="space-y-6">
-      {/* Título e saudação */}
+      {/* Header com perfil do usuário */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Dashboard</h1>
           <p className="text-sm text-gray-500">Bem-vindo, {displayName}!</p>
         </div>
-        <div className="text-sm text-gray-400">
-          Última atualização: {new Date().toLocaleString()}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600 border-r pr-4">
+            <User className="w-4 h-4" />
+            <span>{user?.email}</span>
+          </div>
+          <Link to="/profile" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+            <User className="w-4 h-4" /> Meu Perfil
+          </Link>
+          <button
+            onClick={() => signOut()}
+            className="text-sm text-red-600 hover:underline flex items-center gap-1"
+          >
+            <LogOut className="w-4 h-4" /> Sair
+          </button>
         </div>
       </div>
 
       {/* Cards de métricas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card: TVs Cadastradas */}
         <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <div>
@@ -104,7 +110,6 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Card: Pontos de TV Disponíveis */}
         <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <div>
@@ -121,7 +126,6 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Card: Playlists Ativas */}
         <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <div>
@@ -138,7 +142,6 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* Card: Agendamentos */}
         <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition">
           <div className="flex items-center justify-between">
             <div>
@@ -150,9 +153,9 @@ export default function Dashboard() {
               <Calendar className="w-6 h-6 text-yellow-600" />
             </div>
           </div>
-          <button className="text-sm text-blue-600 hover:underline mt-2 inline-block">
+          <Link to="/schedules" className="text-sm text-blue-600 hover:underline mt-2 inline-block">
             + Agendar Arte
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -165,6 +168,9 @@ export default function Dashboard() {
           </Link>
           <Link to="/playlists" className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg text-sm hover:bg-purple-100 transition">
             <Plus className="w-4 h-4" /> Criar Playlist
+          </Link>
+          <Link to="/schedules" className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 px-4 py-2 rounded-lg text-sm hover:bg-yellow-100 transition">
+            <Calendar className="w-4 h-4" /> Agendar
           </Link>
           <Link to="/reports" className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-4 py-2 rounded-lg text-sm hover:bg-green-100 transition">
             <FileText className="w-4 h-4" /> Ver Relatórios

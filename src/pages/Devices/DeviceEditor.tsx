@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+// src/pages/Devices/DeviceEditor.tsx
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,7 +9,6 @@ export function DeviceEditor() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const isSubmitting = useRef(false);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [form, setForm] = useState({
     name: '',
@@ -16,7 +16,6 @@ export function DeviceEditor() {
     orientation: 'horizontal',
     pairing_code: '',
     security_key: '',
-    is_paired: false,
     resolution: '1080p',
     app_version: '1.0.0',
     active_playlist_id: '',
@@ -36,7 +35,6 @@ export function DeviceEditor() {
         orientation: data.orientation || 'horizontal',
         pairing_code: data.pairing_code || '',
         security_key: data.security_key || '',
-        is_paired: data.is_paired || false,
         resolution: data.resolution || '1080p',
         app_version: data.app_version || '1.0.0',
         active_playlist_id: data.active_playlist_id || '',
@@ -51,22 +49,13 @@ export function DeviceEditor() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (isSubmitting.current) {
-      console.warn('⚠️ Envio bloqueado (já em andamento)');
-      return;
-    }
-
     if (!form.name.trim()) {
       alert('Nome é obrigatório');
       return;
     }
 
     setLoading(true);
-    isSubmitting.current = true;
-
     try {
-      const isPaired = form.is_paired || !!form.pairing_code.trim();
       const securityKey = form.security_key.trim() || crypto.randomUUID();
 
       const payload: any = {
@@ -75,45 +64,33 @@ export function DeviceEditor() {
         orientation: form.orientation,
         pairing_code: form.pairing_code || null,
         security_key: securityKey,
-        is_paired: isPaired,
+        is_paired: false,
         resolution: form.resolution,
         app_version: form.app_version,
         active_playlist_id: form.active_playlist_id || null,
         updated_at: new Date().toISOString(),
+        status: 'online',
+        last_seen_at: new Date().toISOString(),
       };
 
-      if (isPaired) {
-        payload.status = 'online';
-        payload.last_seen_at = new Date().toISOString();
-      }
-
       if (id) {
+        delete payload.status;
+        delete payload.last_seen_at;
         const { error } = await supabase.from('devices').update(payload).eq('id', id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from('devices').insert({
           ...payload,
           created_at: new Date().toISOString(),
-          status: 'offline',
-          last_seen_at: new Date().toISOString(),
         });
-        if (error) {
-          if (error.message?.includes('unique_pairing_code') || error.code === '23505') {
-            alert('Este código de pareamento já está em uso. Gere um novo código no Player.');
-          } else {
-            throw error;
-          }
-          return;
-        }
+        if (error) throw error;
       }
 
       navigate('/devices');
     } catch (error: any) {
-      if (error.message?.includes('unique_pairing_code') || error.code === '23505') {
-        alert('Este código de pareamento já está em uso. Gere um novo código no Player.');
-      } else {
-        alert('Erro: ' + error.message);
-      }
+      alert('Erro: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -131,7 +108,6 @@ export function DeviceEditor() {
             required
           />
         </div>
-
         <div>
           <label className="block font-medium">Setor/Área</label>
           <input
@@ -141,7 +117,6 @@ export function DeviceEditor() {
             onChange={(e) => setForm({ ...form, sector: e.target.value })}
           />
         </div>
-
         <div>
           <label className="block font-medium">Orientação *</label>
           <div className="flex gap-4">
@@ -163,7 +138,6 @@ export function DeviceEditor() {
             </label>
           </div>
         </div>
-
         <div>
           <label className="block font-medium">Playlist Ativa</label>
           <select
@@ -177,7 +151,6 @@ export function DeviceEditor() {
             ))}
           </select>
         </div>
-
         <div>
           <label className="block font-medium">Código de pareamento</label>
           <input
@@ -187,11 +160,7 @@ export function DeviceEditor() {
             value={form.pairing_code}
             onChange={(e) => setForm({ ...form, pairing_code: e.target.value })}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            Preencha com o código de 6 dígitos gerado pelo Player para parear automaticamente.
-          </p>
         </div>
-
         <div>
           <label className="block font-medium">Chave de Segurança</label>
           <input
@@ -201,8 +170,8 @@ export function DeviceEditor() {
             value={form.security_key}
             onChange={(e) => setForm({ ...form, security_key: e.target.value })}
           />
+          <p className="text-xs text-gray-500 mt-1">Deixe em branco para gerar automaticamente.</p>
         </div>
-
         <div>
           <label className="block font-medium">Resolução</label>
           <select
@@ -214,7 +183,6 @@ export function DeviceEditor() {
             <option value="4K">4K</option>
           </select>
         </div>
-
         <div>
           <label className="block font-medium">Versão do App</label>
           <input
@@ -224,16 +192,6 @@ export function DeviceEditor() {
             onChange={(e) => setForm({ ...form, app_version: e.target.value })}
           />
         </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={form.is_paired}
-            onChange={(e) => setForm({ ...form, is_paired: e.target.checked })}
-          />
-          <label>Pareado</label>
-        </div>
-
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => navigate('/devices')} className="px-4 py-2 border rounded">
             Cancelar

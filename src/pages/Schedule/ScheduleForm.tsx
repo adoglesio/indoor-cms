@@ -29,18 +29,27 @@ export function ScheduleForm() {
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
 
   useEffect(() => {
+    if (!user?.id) return;
     fetchDevices();
     fetchPlaylists();
     if (id) fetchSchedule();
-  }, [id]);
+  }, [id, user]);
 
   async function fetchDevices() {
-    const { data } = await supabase.from('devices').select('id, name').order('name');
+    const { data } = await supabase
+      .from('devices')
+      .select('id, name')
+      .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
+      .order('name');
     setDevices(data || []);
   }
 
   async function fetchPlaylists() {
-    const { data } = await supabase.from('playlists').select('id, name').order('name');
+    const { data } = await supabase
+      .from('playlists')
+      .select('id, name')
+      .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
+      .order('name');
     setPlaylists(data || []);
   }
 
@@ -94,8 +103,17 @@ export function ScheduleForm() {
       };
 
       if (id) {
-        const { error } = await supabase.from('schedules').update(payload).eq('id', id);
+        const { error, data: updatedRows } = await supabase
+          .from('schedules')
+          .update(payload)
+          .eq('id', id)
+          .select();
         if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) {
+          throw new Error(
+            'Nenhuma linha foi alterada no banco. Isso geralmente é bloqueio de permissão (RLS) no Supabase para esse agendamento — confira a política de UPDATE da tabela "schedules".'
+          );
+        }
       } else {
         const { error } = await supabase.from('schedules').insert({ ...payload, created_at: new Date().toISOString() });
         if (error) throw error;

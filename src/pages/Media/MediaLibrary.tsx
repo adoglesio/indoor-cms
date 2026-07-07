@@ -12,6 +12,7 @@ interface MediaAsset {
   mime_type: string;
   file_size_bytes: number;
   created_at: string;
+  owner_id: string;
 }
 
 export function MediaLibrary() {
@@ -28,10 +29,18 @@ export function MediaLibrary() {
   }, []);
 
   async function fetchMedia() {
+    // 🔥 Se não houver usuário, não tenta buscar
+    if (!user?.id) {
+      setMedia([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     const { data, error } = await supabase
       .from('media_assets')
       .select('*')
+      .eq('owner_id', user.id) // 🔥 FILTRO POR USUÁRIO
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -52,16 +61,18 @@ export function MediaLibrary() {
       const fileArray = Array.from(files);
 
       for (const file of fileArray) {
-        const fileName = `${Date.now()}_${file.name}`;
+        // Cada usuário sobe pra sua própria pasta dentro do bucket —
+        // necessário pra política de Storage (RLS) conseguir isolar por dono.
+        const filePath = `${user?.id}/${Date.now()}_${file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('media')
-          .upload(fileName, file);
+          .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage
           .from('media')
-          .getPublicUrl(fileName);
+          .getPublicUrl(filePath);
 
         const mediaType = file.type.startsWith('video') ? 'video' : 'image';
 
@@ -73,7 +84,7 @@ export function MediaLibrary() {
             storage_path: urlData.publicUrl,
             mime_type: file.type,
             file_size_bytes: file.size,
-            owner_id: user?.id || null,
+            owner_id: user?.id || null, // 🔥 VINCULA AO USUÁRIO
           });
 
         if (insertError) throw insertError;
@@ -93,16 +104,26 @@ export function MediaLibrary() {
   const handleDelete = async (item: MediaAsset) => {
     if (!window.confirm(`Tem certeza que deseja excluir "${item.file_name}"?`)) return;
 
+    // 🔥 Verifica se a mídia pertence ao usuário (segurança extra)
+    if (item.owner_id !== user?.id) {
+      alert('❌ Você não tem permissão para excluir esta mídia.');
+      return;
+    }
+
     setDeletingId(item.id);
     try {
-      // Extrair o nome do arquivo do storage_path
-      const urlParts = item.storage_path.split('/');
-      const fileName = urlParts[urlParts.length - 1];
+      // Extrai o caminho completo dentro do bucket (ex: "abcd-uuid/123_foto.png"),
+      // não só o nome do arquivo — senão a exclusão no Storage não encontra o arquivo.
+      const marker = '/object/public/media/';
+      const markerIndex = item.storage_path.indexOf(marker);
+      const filePath = markerIndex >= 0
+        ? item.storage_path.slice(markerIndex + marker.length)
+        : item.storage_path.split('/').slice(-2).join('/');
 
-      // 1. Deletar do Storage
+      // 1. Deletar do Storage (se possível)
       const { error: storageError } = await supabase.storage
         .from('media')
-        .remove([fileName]);
+        .remove([filePath]);
 
       if (storageError) console.warn('Erro ao deletar do storage:', storageError);
 

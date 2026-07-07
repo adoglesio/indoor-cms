@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 import { Calendar, Filter, X, Edit, Repeat, Trash2, Clock } from 'lucide-react';
 import { format, startOfWeek, addDays, isSameDay } from 'date-fns';
 import ptBR from 'date-fns/locale/pt-BR';
@@ -15,20 +16,60 @@ interface Schedule {
   playlist_id: string | null;
   start_date: string | null;
   end_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
   is_active: boolean;
+  recurrence: string | null;
+  days_of_week: number[] | null;
   created_at: string;
   device_name?: string;
   playlist_name?: string;
 }
 
+// Aceita tanto "2026-07-01" quanto "2026-07-01T00:00:00+00:00" (timestamptz)
+// "2026-07-01..." -> "01/07/2026", sem passar por Date/UTC (evita o dia "voltar" por fuso horário)
+function formatDateBR(dateStr: string | null): string | null {
+  if (!dateStr) return null;
+  const datePart = dateStr.slice(0, 10); // pega só "YYYY-MM-DD", ignora hora/fuso se vier junto
+  const [y, m, d] = datePart.split('-');
+  if (!y || !m || !d) return null;
+  return `${d}/${m}/${y}`;
+}
+
+// "21:00:00" -> "21:00"
+function formatTimeBR(timeStr: string | null): string | null {
+  if (!timeStr) return null;
+  return timeStr.slice(0, 5);
+}
+
+const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+function formatRecorrencia(recurrence: string | null, daysOfWeek: number[] | null): string {
+  switch (recurrence) {
+    case 'daily':
+      return 'Diário';
+    case 'weekly':
+      if (daysOfWeek && daysOfWeek.length > 0) {
+        return `Semanal (${daysOfWeek.map(d => DIAS_SEMANA[d] ?? d).join(', ')})`;
+      }
+      return 'Semanal';
+    case 'monthly':
+      return 'Mensal';
+    case 'none':
+    default:
+      return 'Não repetir';
+  }
+}
+
 export function ScheduleList() {
+  const { user } = useAuth();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date());
 
   useEffect(() => {
-    fetchSchedules();
-  }, []);
+    if (user?.id) fetchSchedules();
+  }, [user]);
 
   async function fetchSchedules() {
     setLoading(true);
@@ -39,6 +80,7 @@ export function ScheduleList() {
         devices ( name ),
         playlists ( name )
       `)
+      .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -175,8 +217,9 @@ export function ScheduleList() {
                 {schedules.map((s) => (
                   <tr key={s.id}>
                     <td className="px-4 py-3">
-                      {s.start_date ? format(new Date(s.start_date), 'dd/MM/yyyy HH:mm') : '—'}
-                      {s.end_date && ` - ${format(new Date(s.end_date), 'HH:mm')}`}
+                      {s.start_date ? formatDateBR(s.start_date) : '—'}
+                      {formatTimeBR(s.start_time) && ` ${formatTimeBR(s.start_time)}`}
+                      {formatTimeBR(s.end_time) && ` - ${formatTimeBR(s.end_time)}`}
                     </td>
                     <td className="px-4 py-3">{s.playlist_name}</td>
                     <td className="px-4 py-3">{s.device_name}</td>
@@ -185,7 +228,7 @@ export function ScheduleList() {
                         {s.is_active ? 'Ativo' : 'Inativo'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">Não repetir</td>
+                    <td className="px-4 py-3">{formatRecorrencia(s.recurrence, s.days_of_week)}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         <Link to={`/schedules/${s.id}/edit`} className="text-blue-600 hover:underline">Editar</Link>

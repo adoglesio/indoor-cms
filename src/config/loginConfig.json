@@ -1,0 +1,48 @@
+{
+  "screen": "Login",
+  "theme": {
+    "background": "#050B18",
+    "primary": "#0A84FF",
+    "secondary": "#1E40AF",
+    "text": "#FFFFFF",
+    "textSecondary": "#B8C2D1"
+  },
+  "logo": {
+    "image": "logo-conexon.png",
+    "width": 180,
+    "height": 180
+  },
+  "header": {
+    "title": "Bem-vindo!",
+    "subtitle": "Faça login para acessar o sistema."
+  },
+  "inputs": [
+    {
+      "id": "email",
+      "label": "E-mail",
+      "icon": "mail-outline",
+      "placeholder": "Digite seu e-mail"
+    },
+    {
+      "id": "password",
+      "label": "Senha",
+      "icon": "lock-closed-outline",
+      "placeholder": "Digite sua senha",
+      "secureTextEntry": true
+    }
+  ],
+  "options": {
+    "rememberMe": true,
+    "forgotPassword": true
+  },
+  "buttons": [
+    {
+      "id": "login",
+      "text": "Entrar",
+      "color": "#0A84FF"
+    }
+  ],
+  "footer": {
+    "version": "v1.0.0"
+  }
+}

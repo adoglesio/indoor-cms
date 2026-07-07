@@ -15,6 +15,10 @@ import { PlaylistsList } from './pages/Playlists/PlaylistsList';
 import { PlaylistForm } from './pages/Playlists/PlaylistForm';
 import { ScheduleList } from './pages/Schedule/ScheduleList';
 import { ScheduleForm } from './pages/Schedule/ScheduleForm';
+import Plans from './pages/Plans/Plans';
+import { AdminRoute } from './routes/AdminRoute';
+import AdminUsers from './pages/Admin/Users';
+import Users from './pages/Admin/Users';
 
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -46,6 +50,20 @@ function App() {
           <Route path="/schedules" element={<PrivateRoute><Layout><ScheduleList /></Layout></PrivateRoute>} />
           <Route path="/schedules/new" element={<PrivateRoute><Layout><ScheduleForm /></Layout></PrivateRoute>} />
           <Route path="/schedules/:id/edit" element={<PrivateRoute><Layout><ScheduleForm /></Layout></PrivateRoute>} />
+          <Route path="/plans" element={<PrivateRoute><Layout><Plans /></Layout></PrivateRoute>} />
+          <Route path="/admin/users" element={<PrivateRoute><Layout><AdminUsers /></Layout></PrivateRoute>} />
+          <Route
+            path="/admin/users"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <AdminRoute>
+                    <Users />
+                  </AdminRoute>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

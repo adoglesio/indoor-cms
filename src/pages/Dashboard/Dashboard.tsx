@@ -24,32 +24,43 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [playlistsCount, setPlaylistsCount] = useState(0);
   const [schedulesCount, setSchedulesCount] = useState(0);
-  const [totalSlots] = useState(3);
+  const [totalSlots, setTotalSlots] = useState(3);
 
   const displayName = user?.user_metadata?.full_name || user?.email || 'Usuário';
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user?.id) fetchDashboardData();
+  }, [user]);
 
   async function fetchDashboardData() {
     setLoading(true);
     try {
+      // Limite de TVs (pontos) do plano do usuário logado
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('points_included')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      setTotalSlots(profile?.points_included || 3);
+
       const { data: devicesData, error: devicesError } = await supabase
         .from('devices')
         .select('*')
+        .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
         .order('created_at', { ascending: false });
       if (devicesError) throw devicesError;
       setDevices(devicesData || []);
 
       const { count: playlistsCount, error: playlistsError } = await supabase
         .from('playlists')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', user!.id); // 🔥 FILTRO POR USUÁRIO
       if (!playlistsError) setPlaylistsCount(playlistsCount || 0);
 
       const { count: schedulesCount, error: schedulesError } = await supabase
         .from('schedules')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .eq('owner_id', user!.id); // 🔥 FILTRO POR USUÁRIO
       if (!schedulesError) setSchedulesCount(schedulesCount || 0);
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);

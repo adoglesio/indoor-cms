@@ -2,16 +2,18 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 import { Playlist } from '../../types';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 
 export function PlaylistsList() {
+  const { user } = useAuth();
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPlaylists();
-  }, []);
+    if (user?.id) fetchPlaylists();
+  }, [user]);
 
   async function fetchPlaylists() {
     setLoading(true);
@@ -22,6 +24,7 @@ export function PlaylistsList() {
         *,
         playlist_items ( id )
       `)
+      .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
       .order('created_at', { ascending: false });
 
     if (error) {

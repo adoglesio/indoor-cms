@@ -22,12 +22,17 @@ export function DeviceEditor() {
   });
 
   useEffect(() => {
-    if (id) fetchDevice();
-    fetchPlaylists();
-  }, [id]);
+    if (id && user?.id) fetchDevice();
+    if (user?.id) fetchPlaylists();
+  }, [id, user]);
 
   async function fetchDevice() {
-    const { data } = await supabase.from('devices').select('*').eq('id', id).single();
+    const { data } = await supabase
+      .from('devices')
+      .select('*')
+      .eq('id', id)
+      .eq('owner_id', user?.id) // 🔥 só carrega se for do usuário logado
+      .single();
     if (data) {
       setForm({
         name: data.name || '',
@@ -43,7 +48,11 @@ export function DeviceEditor() {
   }
 
   async function fetchPlaylists() {
-    const { data } = await supabase.from('playlists').select('id, name').order('name');
+    const { data } = await supabase
+      .from('playlists')
+      .select('id, name')
+      .eq('owner_id', user!.id) // 🔥 FILTRO POR USUÁRIO
+      .order('name');
     setPlaylists(data || []);
   }
 
@@ -68,6 +77,7 @@ export function DeviceEditor() {
         resolution: form.resolution,
         app_version: form.app_version,
         active_playlist_id: form.active_playlist_id || null,
+        owner_id: user?.id || null, // 🔥 FALTAVA ISSO — é a causa da TV "sumir"
         updated_at: new Date().toISOString(),
         status: 'online',
         last_seen_at: new Date().toISOString(),
@@ -76,14 +86,58 @@ export function DeviceEditor() {
       if (id) {
         delete payload.status;
         delete payload.last_seen_at;
-        const { error } = await supabase.from('devices').update(payload).eq('id', id);
+        const { data: updatedRows, error } = await supabase
+          .from('devices')
+          .update(payload)
+          .eq('id', id)
+          .select();
         if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) {
+          throw new Error('A TV não foi atualizada (bloqueio de permissão no banco / RLS).');
+        }
       } else {
-        const { error } = await supabase.from('devices').insert({
-          ...payload,
-          created_at: new Date().toISOString(),
-        });
+        // Se o código de pareamento digitado já existir, decide o que fazer
+        // em vez de tentar criar uma linha duplicada (que o banco recusaria).
+        if (form.pairing_code) {
+          const { data: existingDevice } = await supabase
+            .from('devices')
+            .select('id, owner_id')
+            .eq('pairing_code', form.pairing_code)
+            .maybeSingle();
+
+          if (existingDevice && existingDevice.owner_id && existingDevice.owner_id !== user?.id) {
+            alert('❌ Esse código de pareamento já está em uso por uma TV de outro usuário. Escolha outro código (ou deixe em branco).');
+            setLoading(false);
+            return;
+          }
+
+          if (existingDevice && !existingDevice.owner_id) {
+            // TV órfã (sobra de testes antigos, sem dono) — adota com segurança
+            const { data: claimed, error: claimError } = await supabase.rpc('claim_orphan_device', {
+              p_pairing_code: form.pairing_code,
+              p_owner_id: user?.id,
+              p_name: payload.name,
+              p_sector: payload.sector,
+              p_orientation: payload.orientation,
+            });
+            if (claimError) throw claimError;
+            if (!claimed) throw new Error('Não foi possível adotar essa TV. Tente novamente.');
+            navigate('/devices');
+            return;
+          }
+        }
+
+        const { data: insertedRows, error } = await supabase
+          .from('devices')
+          .insert({
+            ...payload,
+            created_at: new Date().toISOString(),
+          })
+          .select();
         if (error) throw error;
+        if (!insertedRows || insertedRows.length === 0) {
+          throw new Error('A TV não foi criada (bloqueio de permissão no banco / RLS).');
+        }
       }
 
       navigate('/devices');

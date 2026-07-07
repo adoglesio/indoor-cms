@@ -30,17 +30,19 @@ export function PlaylistForm() {
 
   // Carregar playlists existentes (edição)
   useEffect(() => {
+    if (!user?.id) return;
     if (id) {
       fetchPlaylist();
     }
     fetchMedia();
-  }, [id]);
+  }, [id, user]);
 
   async function fetchPlaylist() {
     const { data, error } = await supabase
       .from('playlists')
       .select('*')
       .eq('id', id)
+      .eq('owner_id', user?.id) // 🔥 SÓ ABRE PRA EDIÇÃO SE FOR O DONO
       .single();
     if (error) {
       console.error('Erro ao buscar playlist:', error);
@@ -70,6 +72,7 @@ export function PlaylistForm() {
     const { data, error } = await supabase
       .from('media_assets')
       .select('id, file_name, media_type')
+      .eq('owner_id', user?.id) // 🔥 FILTRO POR USUÁRIO
       .order('file_name');
     if (error) {
       console.error('Erro ao buscar mídias:', error);

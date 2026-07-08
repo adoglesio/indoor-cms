@@ -17,8 +17,13 @@ import { ScheduleList } from './pages/Schedule/ScheduleList';
 import { ScheduleForm } from './pages/Schedule/ScheduleForm';
 import Plans from './pages/Plans/Plans';
 import { AdminRoute } from './routes/AdminRoute';
+<<<<<<< HEAD
 import AdminUsers from './pages/Admin/Users';
 import Users from './pages/Admin/Users';
+=======
+import Users from './pages/Admin/Users';
+import Reports from './pages/Reports/Reports';
+>>>>>>> b5c39b3 (Atualização do projeto no relatório)
 
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -51,7 +56,11 @@ function App() {
           <Route path="/schedules/new" element={<PrivateRoute><Layout><ScheduleForm /></Layout></PrivateRoute>} />
           <Route path="/schedules/:id/edit" element={<PrivateRoute><Layout><ScheduleForm /></Layout></PrivateRoute>} />
           <Route path="/plans" element={<PrivateRoute><Layout><Plans /></Layout></PrivateRoute>} />
+<<<<<<< HEAD
           <Route path="/admin/users" element={<PrivateRoute><Layout><AdminUsers /></Layout></PrivateRoute>} />
+=======
+          <Route path="/reports" element={<PrivateRoute><Layout><Reports /></Layout></PrivateRoute>} />
+>>>>>>> b5c39b3 (Atualização do projeto no relatório)
           <Route
             path="/admin/users"
             element={

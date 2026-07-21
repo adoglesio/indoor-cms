@@ -17,14 +17,12 @@ export interface Device {
   last_seen_at: string;
   created_at: string;
   updated_at: string;
-<<<<<<< HEAD
+  // Campos para screenshot remoto e controle de reprodução
   screenshot_url?: string | null;
   screenshot_taken_at?: string | null;
   screenshot_requested_at?: string | null;
   now_playing?: string | null;
-=======
   playback_paused?: boolean;
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
 }
 
 // ============================================
@@ -32,37 +30,37 @@ export interface Device {
 // ============================================
 export interface MediaAsset {
   id: string;
-  owner_id: string | null;                // UUID do usuário que fez upload
-  file_name: string;                      // Nome original do arquivo
-  storage_path: string;                   // URL pública ou caminho no Storage
-  media_type: 'image' | 'video';          // Tipo de mídia
-  mime_type: string;                      // Ex: image/png, video/mp4
-  file_size_bytes: number;                // Tamanho em bytes
-  duration_seconds: number | null;        // Duração (apenas para vídeos)
-  thumbnail_path: string | null;          // URL da miniatura (opcional)
-  checksum: string | null;                // Hash para validação offline
-  status: 'active' | 'inactive' | string; // Status da mídia
-  is_qr_offer: boolean;                   // Se é uma oferta com QR Code
+  owner_id: string | null;
+  file_name: string;
+  storage_path: string;
+  media_type: 'image' | 'video';
+  mime_type: string;
+  file_size_bytes: number;
+  duration_seconds: number | null;
+  thumbnail_path: string | null;
+  checksum: string | null;
+  status: 'active' | 'inactive' | string;
+  is_qr_offer: boolean;
   created_at: string;
 }
 
 // ============================================
 // Playlists
 // ============================================
-
 export interface Playlist {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
-  type: 'media' | 'youtube';        // NOVO
-  youtube_url: string | null;       // NOVO
-  orientation: 'horizontal' | 'vertical'; // NOVO
-  audio_enabled: boolean;           // NOVO
-  items_count?: number;             // (opcional) usado no frontend
+  type: 'media' | 'youtube';
+  youtube_url: string | null;
+  orientation: 'horizontal' | 'vertical';
+  audio_enabled: boolean;
+  items_count?: number;
   created_at: string;
   updated_at: string;
 }
+
 // ============================================
 // Itens da Playlist
 // ============================================
@@ -71,7 +69,7 @@ export interface PlaylistItem {
   playlist_id: string;
   media_id: string;
   position: number;
-  duration: number;                       // em segundos
+  duration: number;
   created_at: string;
   updated_at: string;
 }

@@ -16,11 +16,7 @@ import {
   User,
   LogOut,
   WifiOff,
-<<<<<<< HEAD
   Camera,
-  X,
-} from 'lucide-react';
-=======
   X,
   Play,
   Pause,
@@ -30,7 +26,11 @@ interface PlaylistOption {
   id: string;
   name: string;
 }
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
+
+type DeviceWithPlayback = Device & { playback_paused?: boolean };
+
+const getPlaybackPaused = (device: Device) =>
+  (device as DeviceWithPlayback).playback_paused ?? false;
 
 export function DevicesList() {
   const { user, signOut } = useAuth();
@@ -42,16 +42,17 @@ export function DevicesList() {
   const itemsPerPage = 5;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-<<<<<<< HEAD
+
+  // Estados para Screenshot
   const [screenshotDevice, setScreenshotDevice] = useState<Device | null>(null);
   const [screenshotWaiting, setScreenshotWaiting] = useState(false);
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
-=======
+
+  // Estados para "Tocar Agora" e Pausa
   const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
   const [playNowDevice, setPlayNowDevice] = useState<Device | null>(null);
   const [playNowPlaylistId, setPlayNowPlaylistId] = useState('');
   const [pausingId, setPausingId] = useState<string | null>(null);
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
 
   useEffect(() => {
     fetchDevices();
@@ -83,7 +84,7 @@ export function DevicesList() {
         .from('devices')
         .select('*')
         .is('deleted_at', null)
-        .eq('owner_id', user.id) // 🔥 FILTRO POR USUÁRIO
+        .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       setDevices(data || []);
@@ -102,7 +103,6 @@ export function DevicesList() {
   const handleDelete = async (id: string) => {
     if (!window.confirm('⚠️ Tem certeza que deseja excluir esta TV permanentemente?')) return;
     try {
-      // Verifica se a TV pertence ao usuário (segurança extra)
       const { data: device } = await supabase
         .from('devices')
         .select('owner_id')
@@ -138,7 +138,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-  // 2. DELETAR MÚLTIPLAS TVs (com desconexão do Player)
+  // 2. DELETAR MÚLTIPLAS TVs
   // ============================================================
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0) {
@@ -148,7 +148,6 @@ export function DevicesList() {
     if (!window.confirm(`Tem certeza que deseja excluir ${selectedIds.length} TV(s) permanentemente?`)) return;
 
     try {
-      // Verifica se todas as TVs pertencem ao usuário
       const { data: devices, error: checkError } = await supabase
         .from('devices')
         .select('id, owner_id')
@@ -189,7 +188,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-  // 3. DELETAR TVs DESPAREADAS (sem Player conectado)
+  // 3. DELETAR TVs DESPAREADAS
   // ============================================================
   const handleDeleteUnpaired = async () => {
     const unpaired = devices.filter((d) => !d.is_paired);
@@ -255,7 +254,6 @@ export function DevicesList() {
   // ============================================================
   const handlePair = async (id: string) => {
     try {
-      // 1. Buscar limite do plano do usuário
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('points_included')
@@ -266,7 +264,6 @@ export function DevicesList() {
 
       const limit = profile?.points_included || 3;
 
-      // 2. Contar TVs já pareadas (is_paired = true e não deletadas)
       const { count, error: countError } = await supabase
         .from('devices')
         .select('*', { count: 'exact', head: true })
@@ -276,13 +273,11 @@ export function DevicesList() {
 
       if (countError) throw countError;
 
-      // 3. Se já atingiu o limite, bloqueia
       if (count !== null && count >= limit) {
         alert(`❌ Limite do plano atingido! Você já possui ${count} TV(s) pareadas de ${limit} permitidas.`);
         return;
       }
 
-      // 4. Prossegue com o pareamento
       const { error } = await supabase
         .from('devices')
         .update({
@@ -302,12 +297,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-<<<<<<< HEAD
-=======
-  // TOCAR AGORA: atribui uma playlist direto na TV, sem precisar
-  // criar agendamento. Fica passando em loop até alguém trocar ou
-  // pausar. Isso já existia como campo dentro de "Editar TV" — aqui
-  // é só uma via mais rápida, direto da lista.
+  // 7. TOCAR AGORA (atribui playlist diretamente)
   // ============================================================
   const openPlayNow = (device: Device) => {
     setPlayNowDevice(device);
@@ -334,8 +324,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-  // PAUSAR / RETOMAR: congela a TV numa tela neutra sem precisar
-  // desvincular a playlist — retomar volta a tocar de onde parou.
+  // 8. PAUSAR / RETOMAR
   // ============================================================
   const handleTogglePause = async (device: Device) => {
     setPausingId(device.id);
@@ -352,8 +341,7 @@ export function DevicesList() {
   };
 
   // ============================================================
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
-  // 7. REINICIAR TV
+  // 9. REINICIAR TV
   // ============================================================
   const handleReboot = async (id: string) => {
     if (!window.confirm('Enviar comando de reinicialização para a TV?')) return;
@@ -366,8 +354,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-<<<<<<< HEAD
-  // SCREENSHOT REMOTO: pede pra TV tirar uma foto da tela agora
+  // 10. SCREENSHOT REMOTO
   // ============================================================
   const handleRequestScreenshot = async (device: Device) => {
     setScreenshotDevice(device);
@@ -386,8 +373,6 @@ export function DevicesList() {
       return;
     }
 
-    // A TV pode estar offline ou demorar — espera até 20s pela resposta,
-    // checando a cada 2s se screenshot_taken_at ficou mais novo que o pedido.
     const maxAttempts = 10;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -408,10 +393,8 @@ export function DevicesList() {
     setScreenshotError('A TV não respondeu a tempo. Verifique se ela está ligada e conectada.');
   };
 
-=======
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
   // ============================================================
-  // 8. FILTROS E PAGINAÇÃO
+  // 11. FILTROS E PAGINAÇÃO
   // ============================================================
   const filtered = devices.filter((d) => {
     const matchName = d.name?.toLowerCase().includes(search.toLowerCase()) ?? false;
@@ -440,7 +423,7 @@ export function DevicesList() {
   };
 
   // ============================================================
-  // 9. RENDER
+  // RENDER
   // ============================================================
   return (
     <div className="space-y-6">
@@ -543,9 +526,6 @@ export function DevicesList() {
                   <td className="px-4 py-3 capitalize">{device.orientation}</td>
                   <td className="px-4 py-3">{device.active_playlist_id ? 'Playlist' : 'Sem playlist'}</td>
                   <td className="px-4 py-3">
-<<<<<<< HEAD
-                    <StatusBadge status={device.status} />
-=======
                     <div className="flex items-center gap-1.5">
                       <StatusBadge status={device.status} />
                       {device.playback_paused && (
@@ -554,7 +534,6 @@ export function DevicesList() {
                         </span>
                       )}
                     </div>
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
                   </td>
                   <td className="px-4 py-3">
                     {device.last_seen_at ? new Date(device.last_seen_at).toLocaleString() : 'Nunca conectada'}
@@ -584,13 +563,13 @@ export function DevicesList() {
                         <RefreshCw size={16} /> Atualizar
                       </button>
                       <button
-<<<<<<< HEAD
                         onClick={() => handleRequestScreenshot(device)}
                         className="text-purple-600 hover:underline flex items-center gap-1 text-sm"
                         title="Ver o que está passando na TV agora"
                       >
                         <Camera size={16} /> Ver Tela
-=======
+                      </button>
+                      <button
                         onClick={() => openPlayNow(device)}
                         className="text-green-600 hover:underline flex items-center gap-1 text-sm"
                         title="Tocar uma playlist agora, sem precisar de agendamento"
@@ -605,7 +584,6 @@ export function DevicesList() {
                       >
                         {device.playback_paused ? <Play size={16} /> : <Pause size={16} />}
                         {device.playback_paused ? 'Retomar' : 'Pausar'}
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
                       </button>
                       <button
                         onClick={() => handleReboot(device.id)}
@@ -665,7 +643,6 @@ export function DevicesList() {
         </div>
       )}
 
-<<<<<<< HEAD
       {/* Modal de Screenshot Remoto */}
       {screenshotDevice && (
         <div
@@ -722,7 +699,12 @@ export function DevicesList() {
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition disabled:opacity-50"
               >
                 <Camera size={16} /> {screenshotWaiting ? 'Aguardando...' : 'Tirar nova foto'}
-=======
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de Tocar Agora */}
       {playNowDevice && (
         <div
@@ -762,16 +744,11 @@ export function DevicesList() {
                 className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50"
               >
                 <Play size={16} /> Tocar Agora
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
               </button>
             </div>
           </div>
         </div>
       )}
-<<<<<<< HEAD
-=======
-
->>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
     </div>
   );
 }

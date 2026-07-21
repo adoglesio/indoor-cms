@@ -16,9 +16,21 @@ import {
   User,
   LogOut,
   WifiOff,
+<<<<<<< HEAD
   Camera,
   X,
 } from 'lucide-react';
+=======
+  X,
+  Play,
+  Pause,
+} from 'lucide-react';
+
+interface PlaylistOption {
+  id: string;
+  name: string;
+}
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
 
 export function DevicesList() {
   const { user, signOut } = useAuth();
@@ -30,13 +42,33 @@ export function DevicesList() {
   const itemsPerPage = 5;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
+<<<<<<< HEAD
   const [screenshotDevice, setScreenshotDevice] = useState<Device | null>(null);
   const [screenshotWaiting, setScreenshotWaiting] = useState(false);
   const [screenshotError, setScreenshotError] = useState<string | null>(null);
+=======
+  const [playlists, setPlaylists] = useState<PlaylistOption[]>([]);
+  const [playNowDevice, setPlayNowDevice] = useState<Device | null>(null);
+  const [playNowPlaylistId, setPlayNowPlaylistId] = useState('');
+  const [pausingId, setPausingId] = useState<string | null>(null);
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
 
   useEffect(() => {
     fetchDevices();
   }, []);
+
+  useEffect(() => {
+    if (user?.id) fetchPlaylistsForPicker();
+  }, [user]);
+
+  async function fetchPlaylistsForPicker() {
+    const { data } = await supabase
+      .from('playlists')
+      .select('id, name')
+      .eq('owner_id', user!.id)
+      .order('name');
+    setPlaylists(data || []);
+  }
 
   async function fetchDevices() {
     if (!user?.id) {
@@ -270,6 +302,57 @@ export function DevicesList() {
   };
 
   // ============================================================
+<<<<<<< HEAD
+=======
+  // TOCAR AGORA: atribui uma playlist direto na TV, sem precisar
+  // criar agendamento. Fica passando em loop até alguém trocar ou
+  // pausar. Isso já existia como campo dentro de "Editar TV" — aqui
+  // é só uma via mais rápida, direto da lista.
+  // ============================================================
+  const openPlayNow = (device: Device) => {
+    setPlayNowDevice(device);
+    setPlayNowPlaylistId(device.active_playlist_id || '');
+  };
+
+  const handlePlayNow = async () => {
+    if (!playNowDevice || !playNowPlaylistId) return;
+    const { error } = await supabase
+      .from('devices')
+      .update({
+        active_playlist_id: playNowPlaylistId,
+        playback_paused: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', playNowDevice.id);
+
+    if (error) {
+      alert('Erro ao definir a playlist: ' + error.message);
+      return;
+    }
+    setPlayNowDevice(null);
+    fetchDevices();
+  };
+
+  // ============================================================
+  // PAUSAR / RETOMAR: congela a TV numa tela neutra sem precisar
+  // desvincular a playlist — retomar volta a tocar de onde parou.
+  // ============================================================
+  const handleTogglePause = async (device: Device) => {
+    setPausingId(device.id);
+    const { error } = await supabase
+      .from('devices')
+      .update({ playback_paused: !device.playback_paused, updated_at: new Date().toISOString() })
+      .eq('id', device.id);
+    setPausingId(null);
+    if (error) {
+      alert('Erro ao pausar/retomar: ' + error.message);
+      return;
+    }
+    fetchDevices();
+  };
+
+  // ============================================================
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
   // 7. REINICIAR TV
   // ============================================================
   const handleReboot = async (id: string) => {
@@ -283,6 +366,7 @@ export function DevicesList() {
   };
 
   // ============================================================
+<<<<<<< HEAD
   // SCREENSHOT REMOTO: pede pra TV tirar uma foto da tela agora
   // ============================================================
   const handleRequestScreenshot = async (device: Device) => {
@@ -324,6 +408,8 @@ export function DevicesList() {
     setScreenshotError('A TV não respondeu a tempo. Verifique se ela está ligada e conectada.');
   };
 
+=======
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
   // ============================================================
   // 8. FILTROS E PAGINAÇÃO
   // ============================================================
@@ -457,7 +543,18 @@ export function DevicesList() {
                   <td className="px-4 py-3 capitalize">{device.orientation}</td>
                   <td className="px-4 py-3">{device.active_playlist_id ? 'Playlist' : 'Sem playlist'}</td>
                   <td className="px-4 py-3">
+<<<<<<< HEAD
                     <StatusBadge status={device.status} />
+=======
+                    <div className="flex items-center gap-1.5">
+                      <StatusBadge status={device.status} />
+                      {device.playback_paused && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                          ⏸ Pausado
+                        </span>
+                      )}
+                    </div>
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
                   </td>
                   <td className="px-4 py-3">
                     {device.last_seen_at ? new Date(device.last_seen_at).toLocaleString() : 'Nunca conectada'}
@@ -487,11 +584,28 @@ export function DevicesList() {
                         <RefreshCw size={16} /> Atualizar
                       </button>
                       <button
+<<<<<<< HEAD
                         onClick={() => handleRequestScreenshot(device)}
                         className="text-purple-600 hover:underline flex items-center gap-1 text-sm"
                         title="Ver o que está passando na TV agora"
                       >
                         <Camera size={16} /> Ver Tela
+=======
+                        onClick={() => openPlayNow(device)}
+                        className="text-green-600 hover:underline flex items-center gap-1 text-sm"
+                        title="Tocar uma playlist agora, sem precisar de agendamento"
+                      >
+                        <Play size={16} /> Tocar Agora
+                      </button>
+                      <button
+                        onClick={() => handleTogglePause(device)}
+                        disabled={pausingId === device.id}
+                        className="text-orange-600 hover:underline flex items-center gap-1 text-sm disabled:opacity-50"
+                        title={device.playback_paused ? 'Retomar exibição' : 'Pausar exibição'}
+                      >
+                        {device.playback_paused ? <Play size={16} /> : <Pause size={16} />}
+                        {device.playback_paused ? 'Retomar' : 'Pausar'}
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
                       </button>
                       <button
                         onClick={() => handleReboot(device.id)}
@@ -551,6 +665,7 @@ export function DevicesList() {
         </div>
       )}
 
+<<<<<<< HEAD
       {/* Modal de Screenshot Remoto */}
       {screenshotDevice && (
         <div
@@ -607,11 +722,56 @@ export function DevicesList() {
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition disabled:opacity-50"
               >
                 <Camera size={16} /> {screenshotWaiting ? 'Aguardando...' : 'Tirar nova foto'}
+=======
+      {/* Modal de Tocar Agora */}
+      {playNowDevice && (
+        <div
+          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
+          onClick={() => setPlayNowDevice(null)}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Tocar agora em {playNowDevice.name}</h3>
+              <button onClick={() => setPlayNowDevice(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={22} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              A playlist escolhida entra em loop na hora, sem precisar de agendamento — continua passando até você trocar, pausar, ou até um agendamento entrar em vigor.
+            </p>
+            <select
+              value={playNowPlaylistId}
+              onChange={(e) => setPlayNowPlaylistId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4"
+            >
+              <option value="">Selecione uma playlist</option>
+              {playlists.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setPlayNowDevice(null)}
+                className="px-4 py-2 border border-gray-300 hover:bg-gray-50 rounded-lg text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handlePlayNow}
+                disabled={!playNowPlaylistId}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm disabled:opacity-50"
+              >
+                <Play size={16} /> Tocar Agora
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
               </button>
             </div>
           </div>
         </div>
       )}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
     </div>
   );
 }

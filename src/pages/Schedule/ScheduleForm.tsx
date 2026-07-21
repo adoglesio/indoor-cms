@@ -24,6 +24,7 @@ export function ScheduleForm() {
     is_active: true,
     recurrence: 'none',
     days_of_week: [],
+    display_now: false,
   });
 
   const [daysOfWeek, setDaysOfWeek] = useState<number[]>([]);
@@ -68,8 +69,22 @@ export function ScheduleForm() {
         is_active: data.is_active ?? true,
         recurrence: data.recurrence || 'none',
         days_of_week: data.days_of_week || [],
+        display_now: false,
       });
       setDaysOfWeek(data.days_of_week || []);
+    }
+  }
+
+  // "Exibir agora": aplica a playlist direto no(s) dispositivo(s), sem esperar
+  // a data/hora do agendamento. O player da TV já faz polling a cada ~2s lendo
+  // devices.active_playlist_id, então isso troca a tela quase na hora.
+  async function applyPlaylistNow(playlistId: string, deviceId: string) {
+    const query = supabase.from('devices').update({ active_playlist_id: playlistId });
+    const { error } = deviceId
+      ? await query.eq('id', deviceId)
+      : await query.eq('owner_id', user!.id); // "Todas" as TVs do usuário
+    if (error) {
+      throw new Error('Agendamento salvo, mas falhou ao aplicar imediatamente: ' + error.message);
     }
   }
 
@@ -117,6 +132,10 @@ export function ScheduleForm() {
       } else {
         const { error } = await supabase.from('schedules').insert({ ...payload, created_at: new Date().toISOString() });
         if (error) throw error;
+      }
+
+      if (form.display_now) {
+        await applyPlaylistNow(form.playlist_id, form.device_id);
       }
 
       navigate('/schedules');
@@ -260,6 +279,20 @@ export function ScheduleForm() {
             onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
           />
           <label>Ativo</label>
+        </div>
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded p-3">
+          <input
+            id="display_now"
+            type="checkbox"
+            checked={form.display_now}
+            onChange={(e) => setForm({ ...form, display_now: e.target.checked })}
+          />
+          <label htmlFor="display_now">
+            <span className="font-medium">Exibir imediatamente</span>
+            <span className="block text-sm text-gray-600">
+              Ao salvar, troca a playlist na(s) TV(s) na hora, sem esperar a data/hora do agendamento.
+            </span>
+          </label>
         </div>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={() => navigate('/schedules')} className="px-4 py-2 border rounded">Cancelar</button>

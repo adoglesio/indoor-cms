@@ -17,10 +17,14 @@ export interface Device {
   last_seen_at: string;
   created_at: string;
   updated_at: string;
+<<<<<<< HEAD
   screenshot_url?: string | null;
   screenshot_taken_at?: string | null;
   screenshot_requested_at?: string | null;
   now_playing?: string | null;
+=======
+  playback_paused?: boolean;
+>>>>>>> 317a279 (Atualização informações de agendamento e alteração no foco)
 }
 
 // ============================================
